@@ -240,3 +240,8 @@ Promise<String> *Sim800::getNetworkName() const
 		->freeOnFinish();
 	return promise;
 }
+
+Promise<String> *Sim800::getICCID() const
+{
+	return at->execute("AT+CCID");
+}
