@@ -121,6 +121,9 @@ Positive values means error.
 **Promise\<String\> \*Sim800::getNetworkName()**:  
 Sends `AT+COPS?` command to the modem and extracts current network operator name.
 
+**Promise\<String\> \*Sim800::getICCID()**:  
+Sends `AT+CCID` command to the modem and extracts current ICCID from Simcard if it's present.
+
 **Promise\<std::vector\<SMS \*\>\> \*Sim800::getSMSList(SMSListFilter filter = INBOX_UNREAD, bool changeStatus = true)**:  
 Sends `AT+CMGL` command to the modem and parse the response.
 Possible filters:
