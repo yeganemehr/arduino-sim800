@@ -56,7 +56,7 @@ Promise<uint32_t> *Sim800::sendAsciiSMS(const char *phone, const char *text) con
 	auto promise = new Promise<uint32_t>();
 	char command[30];
 	sprintf(command, "AT+CMGS=\"%s\"", phone);
-	at->execute(command, text)
+	at->execute(command, text, 40)
 		->onSuccess([promise](const String &result) {
 			uint32_t id;
 			if (sscanf(result.c_str(), "+CMGS: %u", &id) == 1) {
