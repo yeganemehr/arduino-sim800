@@ -34,6 +34,15 @@ void Sim800::onAtNotification(const ATNotificationEvent *e)
 		this->emit(&e);
 		return;
 	}
+	if (e->content.indexOf("+CMTI") >= 0)
+	{
+		Sim800IncomingSMSEvent evt;
+		if (Sim800IncomingSMSEvent::parseCMTI(&evt, e->content))
+		{
+			this->emit(&evt);
+		}
+		return;
+	}
 }
 
 Promise<void> *Sim800::checkConnection() const
@@ -244,4 +253,24 @@ Promise<String> *Sim800::getNetworkName() const
 Promise<String> *Sim800::getICCID() const
 {
 	return at->execute("AT+CCID");
+}
+
+Promise<SMS *> *Sim800::getSMS(uint8_t index, bool changeStatus) const
+{
+	auto promise = new Promise<SMS *>();
+	char command[14];
+	sprintf(command, "AT+CMGR=%hhu,%hhu", index, changeStatus ? 1 : 0);
+	at->execute(command)
+		->onSuccess([promise, index](const String &result) {
+			auto sms = SMS::parseCMGR(result);
+			if (sms) {
+				sms->setId(index);
+				promise->resolve(sms);
+			} else {
+				promise->reject(std::exception());
+			}
+		})
+		->redirectRejectTo(promise)
+		->freeOnFinish();
+	return promise;
 }

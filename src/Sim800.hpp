@@ -48,6 +48,7 @@ public:
 	Promise<int8_t> *getSignalLevel() const;
 	Promise<String> *getNetworkName() const;
 	Promise<String> *getICCID() const;
+	Promise<SMS *> *getSMS(uint8_t index, bool changeStatus = true) const;
 private:
 	ATConnection *at;
 	SMSMode smsMode = SMSMode::UNKNOWN;

@@ -26,7 +26,8 @@ protected:
 
 public:
 	static std::vector<SMS *> parseCMGL(const String &CMGL);
-	static SMS *parseCMGL(const String &CMGL, size_t &fromIndex, uint8_t &error);
+	static SMS *parse(const String &header, const String &content, size_t &fromIndex, uint8_t &error);
+	static SMS *parseCMGR(const String &CMGR);
 
 	SMS(uint8_t id, Status status) : id(id), status(status){};
 	virtual ~SMS()
@@ -38,8 +39,18 @@ public:
 		return status;
 	}
 
+	inline void setStatus(Status status)
+	{
+		this->status = status;
+	}
+
 	inline uint8_t getId() const {
 		return id;
+	}
+
+	inline void setId(uint8_t id)
+	{
+		this->id = id;
 	}
 };
 

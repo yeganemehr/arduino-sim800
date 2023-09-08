@@ -19,6 +19,6 @@
 	"platforms": "*",
 	"homepage": "https://github.com/yeganemehr/arduino-sim800",
 	"dependencies": {
-		"yeganemehr/arduino-at": "^0.2.0"
+		"yeganemehr/arduino-at": "^0.2.1"
 	}
 }
