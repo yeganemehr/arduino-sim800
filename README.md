@@ -4,7 +4,7 @@
 # General Information
 I tried to build a fluent API for using Sim800 and keep developers away from working with AT commands.  
 This library built on top of [yeganemehr/arduino-at](https://github.com/yeganemehr/arduino-at) which make it completely async.   
-It's tested against Sim800c module & ESP8266 microprocessor but technically it can works with other boards and modules too.
+It's tested against Sim800c module & ESP8266 microcontroller but technically it can works with other boards and modules too.
 
 # Quickstart
 ## Sending an SMS:
@@ -61,7 +61,7 @@ void loop()
 ```
 You can build and upload this code to your board quickly with [Ready-To-Use Example](examples/send-sms)
 
-## Receing an SMS:
+## Receiving an SMS:
 
 ```c++
 #include <Arduino.h>
