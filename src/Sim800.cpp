@@ -14,6 +14,13 @@ void ::Sim800::setup()
 	});
 }
 
+void Sim800::setApn(const char *apn, const char *user, const char *pass)
+{
+	strlcpy(stapn, apn, sizeof(stapn));
+	strlcpy(stuser, user, sizeof(stuser));
+	strlcpy(stpass, pass, sizeof(stpass));
+}
+
 void Sim800::onAtNotification(const ATNotificationEvent *e)
 {
 	if (e->content.indexOf("Call Ready") >= 0)
@@ -28,6 +35,24 @@ void Sim800::onAtNotification(const ATNotificationEvent *e)
 		this->emit(&e);
 		return;
 	}
+	if (e->content.indexOf("CONNECT OK") >= 0) {
+		Sim800TCPEvent e;
+		e.status = Sim800TCPEvent::CONNECTED;
+		this->emit(&e);
+		return;
+    }
+	if (e->content.indexOf("CONNECT FAIL") >= 0) {
+		Sim800TCPEvent e;
+		e.status = Sim800TCPEvent::FAILED;
+		this->emit(&e);
+		return;
+    }
+	if (e->content.indexOf("CLOSED") >= 0) {
+		Sim800TCPEvent e;
+		e.status = Sim800TCPEvent::CLOSED;
+		this->emit(&e);
+		return;
+    }
 	if (e->content.indexOf("+CPIN: NOT READY") >= 0)
 	{
 		Sim800SimCardNotReadyEvent e;
@@ -43,6 +68,24 @@ void Sim800::onAtNotification(const ATNotificationEvent *e)
 		}
 		return;
 	}
+	if (e->content.indexOf("+CIEV") >= 0)
+	{
+		Sim800IncomingGSMEvent evt;
+		if (Sim800IncomingGSMEvent::parseCIEV(&evt, e->content))
+		{
+			this->emit(&evt);
+		}
+		return;
+	}
+	if (e->content.indexOf("*PSUTTZ") >= 0)
+	{
+		Sim800IncomingDateEvent evt;
+		if (Sim800IncomingDateEvent::parsePSUTTZ(&evt, e->content))
+		{
+			this->emit(&evt);
+		}
+		return;
+	}
 }
 
 Promise<void> *Sim800::checkConnection() const
@@ -53,6 +96,22 @@ Promise<void> *Sim800::disableEcho() const
 {
 	return Promise<void>::from(at->execute("ATE0"), true);
 }
+Promise<void> *Sim800::detachGprs() const
+{
+	return Promise<void>::from(at->execute("AT+CIPSHUT"), true);
+}
+Promise<void> *Sim800::initApn() const
+{
+	char args[80];
+	size_t pos = snprintf(args, sizeof(args), "\"%s\"", stapn);
+	if (*stuser) pos += snprintf(args + pos, sizeof(args) - pos, ",\"%s\"", stuser);
+	if (*stpass) pos += snprintf(args + pos, sizeof(args) - pos, ",\"%s\"", stpass);
+	return Promise<void>::from(at->setValue("CSTT", args));
+}
+Promise<void> *Sim800::startGprs() const
+{
+	return Promise<void>::from(at->execute("AT+CIICR", 30));
+}
 Promise<void> *Sim800::init() const
 {
 	return Promise<void>::sequence({
@@ -60,6 +119,68 @@ Promise<void> *Sim800::init() const
 		std::bind(&Sim800::disableEcho, this),
 		std::bind(&Sim800::activeSMSNotification, this),
 	});
+}
+Promise<void> *Sim800::initGprs() const
+{
+	return Promise<void>::sequence({
+		std::bind(&Sim800::detachGprs, this),
+		std::bind(&Sim800::initApn, this),
+		std::bind(&Sim800::startGprs, this),
+	});
+}
+Promise<String> *Sim800::getLocalIp() const
+{
+	return at->execute("AT+CIFSR;E0");
+}
+Promise<String> *Sim800::getIMEI() const
+{
+	return at->execute("AT+GSN");
+}
+
+Promise<void> *Sim800::tcpConnect(const char* host, uint16_t port) const
+{
+	getLocalIp();
+
+	auto promise = new Promise<void>();
+	char args[80];
+	snprintf(args, sizeof(args), "\"TCP\",\"%s\",\"%hu\"", host, port);
+    at->setValue("CIPSTART", args)
+        ->onSuccess([promise]() {
+			promise->resolve();
+        })
+		->redirectRejectTo(promise)
+        ->freeOnFinish();
+	return promise;
+}
+Promise<void> *Sim800::tcpClose()
+{
+	auto promise = new Promise<void>();
+	at->setValue("CIPCLOSE", "0")
+		->onSuccess([this, promise]() {
+			Sim800TCPEvent e;
+			e.status = Sim800TCPEvent::CLOSED;
+			this->emit(&e);
+			promise->resolve();
+		})
+		->redirectRejectTo(promise)
+		->freeOnFinish();
+	return promise;
+}
+Promise<void> *Sim800::sendBinaryData(const byte *data, size_t length) const {
+	auto promise = new Promise<void>();
+	char command[30];
+	snprintf(command, sizeof(command), "AT+CIPSEND=%d", length);
+	at->execute(command, data, length, 40)
+		->onSuccess([promise](const String &result) {
+			if (result.equals("SEND")) {
+				promise->resolve();
+			} else {
+				promise->reject(std::exception());
+			}
+		})
+		->redirectRejectTo(promise)
+		->freeOnFinish();
+	return promise;
 }
 Promise<uint32_t> *Sim800::sendAsciiSMS(const char *phone, const char *text) const {
 	auto promise = new Promise<uint32_t>();
