@@ -5,8 +5,6 @@
 #include <WString.h>
 #include <time.h>
 
-enum {CONNECTED, FAILED, DISCONNECTED};
-
 class Sim800CallReadyEvent : public Event
 {
 public:
